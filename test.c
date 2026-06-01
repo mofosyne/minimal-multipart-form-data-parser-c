@@ -233,6 +233,81 @@ bool test_case6(void)
     return test_case("No file stream found", input, strlen(input), NULL, 0, MultipartParserPhase_Preamble_SKIP_LINE);
 }
 
+bool test_case7(void)
+{
+    // Content with a sequence that partially matches the boundary before diverging.
+    // Boundary "\r\n--BOUN" shares a 6-byte prefix with "\r\n--BOX" in the content.
+    // All 7 buffered bytes ("\r\n--BOX", including the mismatching char) must appear
+    // in the output — nothing silently dropped.
+    const char input[] = "--BOUN\r\n"
+                         "Content-Disposition: form-data; name=\"text\"\r\n"
+                         "\r\n"
+                         "data\r\n--BOXX rest\r\n--BOUN--\r\n";
+
+    const char expected[] = "data\r\n--BOXX rest";
+
+    return test_case("false boundary match in content", input, strlen(input), expected, strlen(expected), MultipartParserPhase_EndOfFile);
+}
+
+bool test_case8(void)
+{
+    // File part with zero bytes of actual content: the boundary immediately follows
+    // the file-start marker. Parser must reach EndOfFile without emitting any data.
+    const char input[] = "--BOUNDARY\r\n"
+                         "Content-Disposition: form-data; name=\"empty\"\r\n"
+                         "\r\n"
+                         "\r\n--BOUNDARY--\r\n";
+
+    return test_case("empty file content", input, strlen(input), NULL, 0, MultipartParserPhase_EndOfFile);
+}
+
+bool test_case9(void)
+{
+    // A non-printable byte inside the first boundary candidate forces the parser back
+    // to preamble scanning. The valid boundary on the following line must still be found.
+    // Also exercises that removing buffer_reset from the GetBoundary error path is safe:
+    // the HYPHEN handler's direct writes unconditionally reinitialise the boundary buffer.
+    const char input[] = "--BAD\x01BOUNDARY\r\n"
+                         "--GOODBOUND\r\n"
+                         "Content-Disposition: form-data; name=\"text\"\r\n"
+                         "\r\n"
+                         "hello\r\n--GOODBOUND--\r\n";
+
+    const char expected[] = "hello";
+
+    return test_case("boundary error recovery", input, strlen(input), expected, strlen(expected), MultipartParserPhase_EndOfFile);
+}
+
+bool test_case10(void)
+{
+    // 70-character boundary fills the user-boundary buffer exactly (the maximum).
+    // Verifies the buffer-size constants have no off-by-one.
+    const char input[] = "--AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r\n"
+                         "Content-Disposition: form-data; name=\"text\"\r\n"
+                         "\r\n"
+                         "max boundary test\r\n"
+                         "--AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA--\r\n";
+
+    const char expected[] = "max boundary test";
+
+    return test_case("maximum boundary length", input, strlen(input), expected, strlen(expected), MultipartParserPhase_EndOfFile);
+}
+
+bool test_case11(void)
+{
+    // 71-character boundary exceeds the buffer; buffer_add returns false and the parser
+    // falls back to SKIP_LINE. A valid boundary on the next line must still be accepted.
+    const char input[] = "--BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\r\n"
+                         "--GOODBOUND\r\n"
+                         "Content-Disposition: form-data; name=\"text\"\r\n"
+                         "\r\n"
+                         "hello\r\n--GOODBOUND--\r\n";
+
+    const char expected[] = "hello";
+
+    return test_case("boundary overflow recovery", input, strlen(input), expected, strlen(expected), MultipartParserPhase_EndOfFile);
+}
+
 int main(int argc, char **argv)
 {
     printf("Testing Minimal Multipart Form Data Parser\n");
@@ -264,6 +339,31 @@ int main(int argc, char **argv)
     }
 
     if (!test_case6())
+    {
+        return 1;
+    }
+
+    if (!test_case7())
+    {
+        return 1;
+    }
+
+    if (!test_case8())
+    {
+        return 1;
+    }
+
+    if (!test_case9())
+    {
+        return 1;
+    }
+
+    if (!test_case10())
+    {
+        return 1;
+    }
+
+    if (!test_case11())
     {
         return 1;
     }

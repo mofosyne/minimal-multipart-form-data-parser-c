@@ -14,19 +14,8 @@ all: multipart_extract test readme_update
 
 # Dev Note: $ is used by both make and AWK. Must escape $ for use in AWK within makefile.
 .PHONY: readme_update
-readme_update: multipart_extract
-	# Library Version (From clib package metadata)
-	jq -r '.version' clib.json | xargs -I{} sed -i 's|<version>.*</version>|<version>{}</version>|' README.md
-	jq -r '.version' clib.json | xargs -I{} sed -i 's|<versionBadge>.*</versionBadge>|<versionBadge>![Version {}](https://img.shields.io/badge/version-{}-blue.svg)</versionBadge>|' README.md
-
-	size multipart_extract | awk 'NR==2 {print $$1}' | xargs -I{} sed -i 's|<dotTextSize>.*</dotTextSize>|<dotTextSize>{}</dotTextSize>|' README.md
-	size multipart_extract | awk 'NR==2 {print $$2}' | xargs -I{} sed -i 's|<dotDataSize>.*</dotDataSize>|<dotDataSize>{}</dotDataSize>|' README.md
-	size multipart_extract | awk 'NR==2 {print $$3}' | xargs -I{} sed -i 's|<dotBSSSize>.*</dotBSSSize>|<dotBSSSize>{}</dotBSSSize>|' README.md
-
-	# Embedded flash data usage based on size of text + data
-	size multipart_extract | awk 'NR==2 {print $$1 + $$2}' | xargs -I{} sed -i 's|<flashSizeUsage>.*</flashSizeUsage>|<flashSizeUsage>{}</flashSizeUsage>|' README.md
-	# Embedded flash data usage based on size of text + data + bss
-	size multipart_extract | awk 'NR==2 {print $$2 + $$3}' | xargs -I{} sed -i 's|<ramSizeUsage>.*</ramSizeUsage>|<ramSizeUsage>{}</ramSizeUsage>|' README.md
+readme_update:
+	./parser_size.sh | ./readme_update.sh
 
 .PHONY: install
 install: multipart_extract

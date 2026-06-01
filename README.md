@@ -62,17 +62,17 @@ MultipartParserEvent minimal_multipart_parser_process(MinimalMultipartParserCont
 
 It emits one of the following events:
 
-* `MultipartParserEvent_None` : No event yet; awaiting a file stream.
-* `MultipartParserEvent_FileStreamFound` : A file stream has been detected.
-* `MultipartParserEvent_FileStreamStarting` : A file stream is starting.
-* `MultipartParserEvent_DataBufferAvailable` : File data is available (usually a byte or small buffer).
-* `MultipartParserEvent_DataStreamCompleted` : File stream has ended.
+* `MultipartParserEvent_None` : Nothing to act on; keep feeding bytes.
+* `MultipartParserEvent_FileStreamFound` : First boundary line detected. Part headers (e.g. `Content-Disposition`) are about to follow — **not yet file data**.
+* `MultipartParserEvent_FileStreamStarting` : Part headers complete; file bytes are next. **This is the right moment to begin a flash-write sequence or open an output buffer.**
+* `MultipartParserEvent_DataBufferAvailable` : File bytes are ready. Retrieve with `get_data_size`/`get_data_buffer`. **Important:** the buffer pointer is only valid until the next call to `process()` — copy the bytes before then. Buffer size is typically 1 byte for ordinary content and up to `boundary_length + 1` bytes when a partial boundary match is flushed. For flash writes, accumulate into your own page-sized buffer first.
+* `MultipartParserEvent_DataStreamCompleted` : Boundary terminator matched; file is complete. No data accompanies this event.
 
 Retrieve available data upon `MultipartParserEvent_DataBufferAvailable` event:
 
 ```c
 unsigned int minimal_multipart_parser_get_data_size(const MinimalMultipartParserContext *context);
-char *minimal_multipart_parser_get_data_buffer(const MinimalMultipartParserContext *context);
+const char *minimal_multipart_parser_get_data_buffer(const MinimalMultipartParserContext *context);
 ```
 
 Check if the file was fully received:
@@ -81,49 +81,89 @@ Check if the file was fully received:
 bool minimal_multipart_parser_is_file_received(const MinimalMultipartParserContext *context);
 ```
 
-Example:
+**Stdio example** (pipe to stdout):
 
 ```c
 int c;
 static MinimalMultipartParserContext state = {0};
 while ((c = getc(stdin)) != EOF)
 {
-    // Processor handles incoming stream character by character
     const MultipartParserEvent event = minimal_multipart_parser_process(&state, (char)c);
 
-    // Handle Special Events
     if (event == MultipartParserEvent_DataBufferAvailable)
     {
-        // Data Available To Receive
+        // Copy bytes before the next call to process() invalidates the pointer
         for (unsigned int j = 0; j < minimal_multipart_parser_get_data_size(&state); j++)
-        {
-            const char rx = minimal_multipart_parser_get_data_buffer(&state)[j];
-            // Output received data
-            putc(rx, stdout);
-        }
+            putc(minimal_multipart_parser_get_data_buffer(&state)[j], stdout);
     }
     else if (event == MultipartParserEvent_DataStreamCompleted)
     {
-        // Data Stream Finished
         break;
     }
 }
 
-// Check if file has been received
-if (minimal_multipart_parser_is_file_received(&state))
+if (!minimal_multipart_parser_is_file_received(&state))
 {
-    // File Received Successfully
+    // Stream ended before a complete file was received
 }
-else
+```
+
+**Bootloader / flash-write example** (accumulate into a page buffer before writing):
+
+```c
+#define FLASH_PAGE_SIZE 256
+
+static MinimalMultipartParserContext state = {0};
+static uint8_t page_buf[FLASH_PAGE_SIZE];
+static unsigned int page_pos = 0;
+static uint32_t flash_addr = FIRMWARE_BASE_ADDR;
+
+static void flush_page(void)
 {
-    // File Reception Failed
+    if (page_pos > 0)
+    {
+        flash_write(flash_addr, page_buf, page_pos);
+        flash_addr += page_pos;
+        page_pos = 0;
+    }
+}
+
+void on_byte_received(char c)
+{
+    const MultipartParserEvent event = minimal_multipart_parser_process(&state, c);
+
+    if (event == MultipartParserEvent_FileStreamStarting)
+    {
+        // Part headers done — file bytes are next; prepare flash
+        flash_erase(FIRMWARE_BASE_ADDR, FIRMWARE_MAX_SIZE);
+        flash_addr = FIRMWARE_BASE_ADDR;
+        page_pos = 0;
+    }
+    else if (event == MultipartParserEvent_DataBufferAvailable)
+    {
+        // Copy now — pointer is invalid after the next process() call
+        const char *buf = minimal_multipart_parser_get_data_buffer(&state);
+        unsigned int len = minimal_multipart_parser_get_data_size(&state);
+        for (unsigned int i = 0; i < len; i++)
+        {
+            page_buf[page_pos++] = (uint8_t)buf[i];
+            if (page_pos == FLASH_PAGE_SIZE)
+                flush_page();
+        }
+    }
+    else if (event == MultipartParserEvent_DataStreamCompleted)
+    {
+        flush_page();  // write any remaining bytes
+        if (minimal_multipart_parser_is_file_received(&state))
+            boot_jump(FIRMWARE_BASE_ADDR);
+    }
 }
 ```
 
 ### `multipart_extract` Micro-Utility
 
 A microutility named `multipart_extract` is provided and is installable and uninstallable via
-these two command below (`PREFIX=/usr/local` can be omitted or adjusted as needed to your preferred
+these two commands below (`PREFIX=/usr/local` can be omitted or adjusted as needed to your preferred
 installation directory. By default it will install to `/usr/local/bin`).
 
 ```bash
@@ -135,7 +175,7 @@ It processes an HTTP multipart stream from standard input and outputs the first 
 
 ```bash
 echo -e "-----------------------------9051914041544843365972754266\r\n"\
-"Content-Disposition: form-data; name="text"\r\n"\
+"Content-Disposition: form-data; name=\"text\"\r\n"\
 "\r\n"\
 "text default\r\n"\
 "-----------------------------9051914041544843365972754266--\r\n" \
@@ -147,21 +187,23 @@ Will output `text default`.
 
 ## Size
 
-A small micro utility program was written `multipart_extract` to find
-out the minimal expected program size on disk and in ram.
+The parser object (`minimal_multipart_parser.c`) is compiled with `-Os -g0` and
+measured in isolation — no libc, no stdio — to reflect true embedded footprint.
 
-Based on that case study, you can expect this library to consume around <flashSizeUsage>2841</flashSizeUsage> bytes in flash/disk memory storage and <ramSizeUsage>808</ramSizeUsage> bytes in ram usage.
+The library has no global state — the caller allocates one `MinimalMultipartParserContext` wherever suits their memory map (stack, static, or a fixed address). The library code itself is around <flashSizeUsage>440</flashSizeUsage> bytes of flash (`.bss` = 0); the context struct adds 160 bytes of RAM.
 
-Heres a breakdown of the program sections size usage:
+Breakdown of the parser object's ELF sections:
 
-| `.text` | `.data` | `.bss` |
-| ---     | ---     | ---    |
-| <dotTextSize>2233</dotTextSize> B | <dotDataSize>608</dotDataSize> B | <dotBSSSize>200</dotBSSSize> B |
+| `.text` (flash/code) | `.data` (flash+RAM) | `.bss` (RAM) |
+| ---                  | ---                 | ---          |
+| <dotTextSize>440</dotTextSize> B | <dotDataSize>0</dotDataSize> B | <dotBSSSize>0</dotBSSSize> B |
+
+> **Embedded memory budget summary:** ~440 B flash + 160 B RAM for the context.
 
 
 ## Purpose For Existence
 
-For use in very constrant devices
+For use in very constrained devices
 
 * Use in bootloader (e.g. uboot)
 * Use in CGI scripts (e.g. busybox)
@@ -178,7 +220,7 @@ For this purpose these are the restrictions to this code:
 
 These are not considerations I am taking:
 
-* Speed and cpu efficency is not of concern here. You would not typically be using this because you care about speed.
+* Speed and cpu efficiency is not of concern here. You would not typically be using this because you care about speed.
 * Will not be tolerant of only `\n` even if the spec allows for receiving it, in order to minimise code size. 
     - Will only follow CRLF (`\r\n`), because most browsers follow RFC2616.
 
@@ -213,7 +255,7 @@ minimal implementation that you may want to consider if you need more features t
 * [francoiscolas/multipart-parser](https://github.com/francoiscolas/multipart-parser)
     - Does not appear to use malloc
     - Uses callback functions on each data reception
-    - Validates and throws an error if not of the exact form. Ours doesn't not for code size consideration.
+    - Validates and throws an error if not of the exact form. Ours doesn't, for code size reasons.
     - You need to parse `Content-Type` from the response head yourself to get the boundary
         - This is because the init function of that implementation requires it.
         - Ours simply assumes that the first line of this form `\r\n--BOUNDARY\r\n` is the boundary which is a safe assumption to make

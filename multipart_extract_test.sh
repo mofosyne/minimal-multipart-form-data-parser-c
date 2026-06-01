@@ -3,7 +3,7 @@
 # Not comprehensive as that is suppose to be done by test.c
 
 input="-----------------------------9051914041544843365972754266\r\n"\
-"Content-Disposition: form-data; name="text"\r\n"\
+"Content-Disposition: form-data; name=\"text\"\r\n"\
 "\r\n"\
 "text default\r\n"\
 "-----------------------------9051914041544843365972754266--\r\n"

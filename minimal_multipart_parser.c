@@ -12,11 +12,7 @@
 
 static inline unsigned int buffer_count(MinimalMultipartParserCharBuffer *context) { return context->count; }
 
-static inline void buffer_reset(MinimalMultipartParserCharBuffer *context)
-{
-    context->buffer[0] = '\0';
-    context->count = 0;
-}
+static inline void buffer_reset(MinimalMultipartParserCharBuffer *context) { context->count = 0; }
 
 static inline bool buffer_add(MinimalMultipartParserCharBuffer *context, const char c)
 {
@@ -25,9 +21,7 @@ static inline bool buffer_add(MinimalMultipartParserCharBuffer *context, const c
         return false;
     }
 
-    context->buffer[context->count] = c;
-    context->buffer[context->count + 1] = '\0';
-    context->count++;
+    context->buffer[context->count++] = c;
     return true;
 }
 
@@ -106,10 +100,11 @@ MultipartParserEvent minimal_multipart_parser_process(MinimalMultipartParserCont
         {
             case '-':
                 context->phase = MultipartParserPhase_GetBoundary;
-                buffer_add(boundaryBuffer, '\r');
-                buffer_add(boundaryBuffer, '\n');
-                buffer_add(boundaryBuffer, '-');
-                buffer_add(boundaryBuffer, '-');
+                boundaryBuffer->buffer[0] = '\r';
+                boundaryBuffer->buffer[1] = '\n';
+                boundaryBuffer->buffer[2] = '-';
+                boundaryBuffer->buffer[3] = '-';
+                boundaryBuffer->count = 4;
                 return MultipartParserEvent_None;
             default:
                 context->phase = MultipartParserPhase_Preamble_SKIP_LINE;
@@ -128,13 +123,11 @@ MultipartParserEvent minimal_multipart_parser_process(MinimalMultipartParserCont
                 if ((c < ' ') || ('~' < c))
                 {
                     context->phase = MultipartParserPhase_Preamble_SKIP_LINE;
-                    buffer_reset(dataBuffer);
                     return MultipartParserEvent_None;
                 }
                 if (!buffer_add(boundaryBuffer, c))
                 {
                     context->phase = MultipartParserPhase_Preamble_SKIP_LINE;
-                    buffer_reset(dataBuffer);
                     return MultipartParserEvent_None;
                 }
                 return MultipartParserEvent_None;
@@ -150,7 +143,6 @@ MultipartParserEvent minimal_multipart_parser_process(MinimalMultipartParserCont
                 return MultipartParserEvent_FileStreamFound;
             default:
                 context->phase = MultipartParserPhase_Preamble_SKIP_LINE;
-                buffer_reset(dataBuffer);
                 return MultipartParserEvent_None;
         }
     }
@@ -165,8 +157,8 @@ MultipartParserEvent minimal_multipart_parser_process(MinimalMultipartParserCont
             return MultipartParserEvent_None;
         }
 
-        buffer_add(dataBuffer, c);
-        if (buffer_count(dataBuffer) >= MINIMAL_MULTIPART_PARSER_FILE_START_MARKER_COUNT)
+        dataBuffer->count++;
+        if (dataBuffer->count >= MINIMAL_MULTIPART_PARSER_FILE_START_MARKER_COUNT)
         {
             context->phase = MultipartParserPhase_GetFileBytes;
             buffer_reset(dataBuffer);

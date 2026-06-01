@@ -10,7 +10,6 @@
 #ifndef MINIMAL_MULTIPART_PARSER_H
 #define MINIMAL_MULTIPART_PARSER_H
 
-#include "minimal_multipart_parser.h"
 #include <stdbool.h>
 
 // Size of the full boundary string we are searching for as a multipart file divider
@@ -49,26 +48,32 @@ typedef enum MultipartParserPhase
     MultipartParserPhase_EndOfFile
 } MultipartParserPhase;
 
+// count is first so it sits at offset 0 within the struct, keeping every
+// access a 1-byte displacement on common architectures (saves ~3 bytes per
+// instruction vs a 4-byte displacement when count was after the buffer).
 typedef struct MinimalMultipartParserCharBuffer
 {
+    unsigned char count;
     char buffer[MINIMAL_MULTIPART_PARSER_MAX_CHAR + 1];
-    unsigned int count;
 } MinimalMultipartParserCharBuffer;
 
+// Field order is load-bearing for code size: data_available (offset 4),
+// data.count (offset 5), and boundary.count (offset 81) all land within
+// the 0-127 range that encodes as a 1-byte displacement. Reordering fields
+// pushes hot accesses into 4-byte displacements (~3 bytes wasted each).
 typedef struct MinimalMultipartParserContext
 {
     MultipartParserPhase phase;
-    MinimalMultipartParserCharBuffer boundary;
-    MinimalMultipartParserCharBuffer data;
-
     bool data_available;
+    MinimalMultipartParserCharBuffer data;
+    MinimalMultipartParserCharBuffer boundary;
 } MinimalMultipartParserContext;
 
-static inline const unsigned int minimal_multipart_parser_get_data_size(const MinimalMultipartParserContext *context) { return context->data.count; }
+static inline unsigned int minimal_multipart_parser_get_data_size(const MinimalMultipartParserContext *context) { return context->data.count; }
 
 static inline const char *minimal_multipart_parser_get_data_buffer(const MinimalMultipartParserContext *context) { return context->data.buffer; }
 
-static inline const bool minimal_multipart_parser_is_file_received(const MinimalMultipartParserContext *context) { return context->phase == MultipartParserPhase_EndOfFile; }
+static inline bool minimal_multipart_parser_is_file_received(const MinimalMultipartParserContext *context) { return context->phase == MultipartParserPhase_EndOfFile; }
 
 MultipartParserEvent minimal_multipart_parser_process(MinimalMultipartParserContext *context, const char c);
 
