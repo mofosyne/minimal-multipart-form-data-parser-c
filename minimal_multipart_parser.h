@@ -50,17 +50,16 @@ typedef enum MultipartParserPhase
 
 typedef struct MinimalMultipartParserCharBuffer
 {
-    char buffer[MINIMAL_MULTIPART_PARSER_MAX_CHAR + 1];
     unsigned char count;
+    char buffer[MINIMAL_MULTIPART_PARSER_MAX_CHAR + 1];
 } MinimalMultipartParserCharBuffer;
 
 typedef struct MinimalMultipartParserContext
 {
     MultipartParserPhase phase;
-    MinimalMultipartParserCharBuffer boundary;
-    MinimalMultipartParserCharBuffer data;
-
     bool data_available;
+    MinimalMultipartParserCharBuffer data;
+    MinimalMultipartParserCharBuffer boundary;
 } MinimalMultipartParserContext;
 
 static inline const unsigned int minimal_multipart_parser_get_data_size(const MinimalMultipartParserContext *context) { return context->data.count; }
