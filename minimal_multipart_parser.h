@@ -48,12 +48,19 @@ typedef enum MultipartParserPhase
     MultipartParserPhase_EndOfFile
 } MultipartParserPhase;
 
+// count is first so it sits at offset 0 within the struct, keeping every
+// access a 1-byte displacement on common architectures (saves ~3 bytes per
+// instruction vs a 4-byte displacement when count was after the buffer).
 typedef struct MinimalMultipartParserCharBuffer
 {
     unsigned char count;
     char buffer[MINIMAL_MULTIPART_PARSER_MAX_CHAR + 1];
 } MinimalMultipartParserCharBuffer;
 
+// Field order is load-bearing for code size: data_available (offset 4),
+// data.count (offset 5), and boundary.count (offset 81) all land within
+// the 0-127 range that encodes as a 1-byte displacement. Reordering fields
+// pushes hot accesses into 4-byte displacements (~3 bytes wasted each).
 typedef struct MinimalMultipartParserContext
 {
     MultipartParserPhase phase;
