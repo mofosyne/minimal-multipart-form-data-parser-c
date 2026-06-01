@@ -72,7 +72,7 @@ Retrieve available data upon `MultipartParserEvent_DataBufferAvailable` event:
 
 ```c
 unsigned int minimal_multipart_parser_get_data_size(const MinimalMultipartParserContext *context);
-char *minimal_multipart_parser_get_data_buffer(const MinimalMultipartParserContext *context);
+const char *minimal_multipart_parser_get_data_buffer(const MinimalMultipartParserContext *context);
 ```
 
 Check if the file was fully received:
@@ -163,7 +163,7 @@ void on_byte_received(char c)
 ### `multipart_extract` Micro-Utility
 
 A microutility named `multipart_extract` is provided and is installable and uninstallable via
-these two command below (`PREFIX=/usr/local` can be omitted or adjusted as needed to your preferred
+these two commands below (`PREFIX=/usr/local` can be omitted or adjusted as needed to your preferred
 installation directory. By default it will install to `/usr/local/bin`).
 
 ```bash
@@ -175,7 +175,7 @@ It processes an HTTP multipart stream from standard input and outputs the first 
 
 ```bash
 echo -e "-----------------------------9051914041544843365972754266\r\n"\
-"Content-Disposition: form-data; name="text"\r\n"\
+"Content-Disposition: form-data; name=\"text\"\r\n"\
 "\r\n"\
 "text default\r\n"\
 "-----------------------------9051914041544843365972754266--\r\n" \
@@ -203,7 +203,7 @@ Breakdown of the parser object's ELF sections:
 
 ## Purpose For Existence
 
-For use in very constrant devices
+For use in very constrained devices
 
 * Use in bootloader (e.g. uboot)
 * Use in CGI scripts (e.g. busybox)
@@ -220,7 +220,7 @@ For this purpose these are the restrictions to this code:
 
 These are not considerations I am taking:
 
-* Speed and cpu efficency is not of concern here. You would not typically be using this because you care about speed.
+* Speed and cpu efficiency is not of concern here. You would not typically be using this because you care about speed.
 * Will not be tolerant of only `\n` even if the spec allows for receiving it, in order to minimise code size. 
     - Will only follow CRLF (`\r\n`), because most browsers follow RFC2616.
 
@@ -255,7 +255,7 @@ minimal implementation that you may want to consider if you need more features t
 * [francoiscolas/multipart-parser](https://github.com/francoiscolas/multipart-parser)
     - Does not appear to use malloc
     - Uses callback functions on each data reception
-    - Validates and throws an error if not of the exact form. Ours doesn't not for code size consideration.
+    - Validates and throws an error if not of the exact form. Ours doesn't, for code size reasons.
     - You need to parse `Content-Type` from the response head yourself to get the boundary
         - This is because the init function of that implementation requires it.
         - Ours simply assumes that the first line of this form `\r\n--BOUNDARY\r\n` is the boundary which is a safe assumption to make
