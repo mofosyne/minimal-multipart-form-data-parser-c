@@ -62,11 +62,11 @@ typedef struct MinimalMultipartParserContext
     MinimalMultipartParserCharBuffer boundary;
 } MinimalMultipartParserContext;
 
-static inline const unsigned int minimal_multipart_parser_get_data_size(const MinimalMultipartParserContext *context) { return context->data.count; }
+static inline unsigned int minimal_multipart_parser_get_data_size(const MinimalMultipartParserContext *context) { return context->data.count; }
 
 static inline const char *minimal_multipart_parser_get_data_buffer(const MinimalMultipartParserContext *context) { return context->data.buffer; }
 
-static inline const bool minimal_multipart_parser_is_file_received(const MinimalMultipartParserContext *context) { return context->phase == MultipartParserPhase_EndOfFile; }
+static inline bool minimal_multipart_parser_is_file_received(const MinimalMultipartParserContext *context) { return context->phase == MultipartParserPhase_EndOfFile; }
 
 MultipartParserEvent minimal_multipart_parser_process(MinimalMultipartParserContext *context, const char c);
 
