@@ -12,11 +12,7 @@
 
 static inline unsigned int buffer_count(MinimalMultipartParserCharBuffer *context) { return context->count; }
 
-static inline void buffer_reset(MinimalMultipartParserCharBuffer *context)
-{
-    context->buffer[0] = '\0';
-    context->count = 0;
-}
+static inline void buffer_reset(MinimalMultipartParserCharBuffer *context) { context->count = 0; }
 
 static inline bool buffer_add(MinimalMultipartParserCharBuffer *context, const char c)
 {
@@ -25,9 +21,7 @@ static inline bool buffer_add(MinimalMultipartParserCharBuffer *context, const c
         return false;
     }
 
-    context->buffer[context->count] = c;
-    context->buffer[context->count + 1] = '\0';
-    context->count++;
+    context->buffer[context->count++] = c;
     return true;
 }
 
@@ -128,13 +122,13 @@ MultipartParserEvent minimal_multipart_parser_process(MinimalMultipartParserCont
                 if ((c < ' ') || ('~' < c))
                 {
                     context->phase = MultipartParserPhase_Preamble_SKIP_LINE;
-                    buffer_reset(dataBuffer);
+                    buffer_reset(boundaryBuffer);
                     return MultipartParserEvent_None;
                 }
                 if (!buffer_add(boundaryBuffer, c))
                 {
                     context->phase = MultipartParserPhase_Preamble_SKIP_LINE;
-                    buffer_reset(dataBuffer);
+                    buffer_reset(boundaryBuffer);
                     return MultipartParserEvent_None;
                 }
                 return MultipartParserEvent_None;
@@ -150,7 +144,7 @@ MultipartParserEvent minimal_multipart_parser_process(MinimalMultipartParserCont
                 return MultipartParserEvent_FileStreamFound;
             default:
                 context->phase = MultipartParserPhase_Preamble_SKIP_LINE;
-                buffer_reset(dataBuffer);
+                buffer_reset(boundaryBuffer);
                 return MultipartParserEvent_None;
         }
     }

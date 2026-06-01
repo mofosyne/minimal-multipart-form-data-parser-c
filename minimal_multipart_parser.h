@@ -10,7 +10,6 @@
 #ifndef MINIMAL_MULTIPART_PARSER_H
 #define MINIMAL_MULTIPART_PARSER_H
 
-#include "minimal_multipart_parser.h"
 #include <stdbool.h>
 
 // Size of the full boundary string we are searching for as a multipart file divider
@@ -52,7 +51,7 @@ typedef enum MultipartParserPhase
 typedef struct MinimalMultipartParserCharBuffer
 {
     char buffer[MINIMAL_MULTIPART_PARSER_MAX_CHAR + 1];
-    unsigned int count;
+    unsigned char count;
 } MinimalMultipartParserCharBuffer;
 
 typedef struct MinimalMultipartParserContext

@@ -150,13 +150,13 @@ Will output `text default`.
 A small micro utility program was written `multipart_extract` to find
 out the minimal expected program size on disk and in ram.
 
-Based on that case study, you can expect this library to consume around <flashSizeUsage>2841</flashSizeUsage> bytes in flash/disk memory storage and <ramSizeUsage>808</ramSizeUsage> bytes in ram usage.
+Based on that case study, you can expect this library to consume around <flashSizeUsage>2800</flashSizeUsage> bytes in flash/disk memory storage and <ramSizeUsage>800</ramSizeUsage> bytes in ram usage.
 
 Heres a breakdown of the program sections size usage:
 
 | `.text` | `.data` | `.bss` |
 | ---     | ---     | ---    |
-| <dotTextSize>2233</dotTextSize> B | <dotDataSize>608</dotDataSize> B | <dotBSSSize>200</dotBSSSize> B |
+| <dotTextSize>2192</dotTextSize> B | <dotDataSize>608</dotDataSize> B | <dotBSSSize>192</dotBSSSize> B |
 
 
 ## Purpose For Existence

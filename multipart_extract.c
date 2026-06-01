@@ -1,13 +1,13 @@
 //
-// test.c
+// multipart_extract.c
 //
 // Copyright (c) 2024 Brian Khuu
 // MIT licensed
 //
 
-// This is explicitly written to be very minimal and to use lots of
-// global static variables to allow for gauging the embedded
-// memory size requirement of this library
+// Minimal streaming utility: reads HTTP multipart/form-data from stdin,
+// outputs the first file's content to stdout. Uses global static state
+// to keep stack and code size small for embedded targets.
 
 #include "minimal_multipart_parser.h"
 #include <stdbool.h>
