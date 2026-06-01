@@ -190,9 +190,7 @@ Will output `text default`.
 The parser object (`minimal_multipart_parser.c`) is compiled with `-Os -g0` and
 measured in isolation — no libc, no stdio — to reflect true embedded footprint.
 
-The library code itself consumes around <flashSizeUsage>440</flashSizeUsage> bytes of flash and has no global state (`.bss` = 0). The library has no global state — the caller owns the context.
-
-In addition, the caller must allocate one `MinimalMultipartParserContext` (160 bytes on this platform) wherever suits their memory map: stack, static, or a fixed address in RAM.
+The library has no global state — the caller allocates one `MinimalMultipartParserContext` wherever suits their memory map (stack, static, or a fixed address). The library code itself is around <flashSizeUsage>440</flashSizeUsage> bytes of flash (`.bss` = 0); the context struct adds 160 bytes of RAM.
 
 Breakdown of the parser object's ELF sections:
 

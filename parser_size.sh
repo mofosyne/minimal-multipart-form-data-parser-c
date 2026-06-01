@@ -18,5 +18,5 @@ $CC $CFLAGS -c -g0 -Os minimal_multipart_parser.c -o "$tmpobj"
 
 size "$tmpobj" | awk 'NR==2 {
     text=$1; data=$2; bss=$3
-    printf "text=%d\ndata=%d\nbss=%d\nflash=%d\nram=%d\n", text, data, bss, text+data, data+bss
+    printf "text=%d\ndata=%d\nbss=%d\nflash=%d\n", text, data, bss, text+data
 }'

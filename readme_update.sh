@@ -15,7 +15,6 @@ while IFS='=' read -r key value; do
         data)  sed -i "s|<dotDataSize>.*</dotDataSize>|<dotDataSize>${value}</dotDataSize>|" README.md ;;
         bss)   sed -i "s|<dotBSSSize>.*</dotBSSSize>|<dotBSSSize>${value}</dotBSSSize>|" README.md ;;
         flash) sed -i "s|<flashSizeUsage>.*</flashSizeUsage>|<flashSizeUsage>${value}</flashSizeUsage>|" README.md ;;
-        ram)   sed -i "s|<ramSizeUsage>.*</ramSizeUsage>|<ramSizeUsage>${value}</ramSizeUsage>|" README.md ;;
     esac
 done
 
