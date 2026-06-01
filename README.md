@@ -147,16 +147,16 @@ Will output `text default`.
 
 ## Size
 
-A small micro utility program was written `multipart_extract` to find
-out the minimal expected program size on disk and in ram.
+The parser object (`minimal_multipart_parser.c`) is compiled with `-Os -g0` and
+measured in isolation — no libc, no stdio — to reflect true embedded footprint.
 
-Based on that case study, you can expect this library to consume around <flashSizeUsage>2671</flashSizeUsage> bytes in flash/disk memory storage and <ramSizeUsage>800</ramSizeUsage> bytes in ram usage.
+You can expect this library to consume around <flashSizeUsage>440</flashSizeUsage> bytes in flash and <ramSizeUsage>0</ramSizeUsage> bytes in RAM.
 
-Heres a breakdown of the program sections size usage:
+Breakdown of the parser object's ELF sections:
 
-| `.text` | `.data` | `.bss` |
-| ---     | ---     | ---    |
-| <dotTextSize>2063</dotTextSize> B | <dotDataSize>608</dotDataSize> B | <dotBSSSize>192</dotBSSSize> B |
+| `.text` (flash/code) | `.data` (flash+RAM) | `.bss` (RAM) |
+| ---                  | ---                 | ---          |
+| <dotTextSize>440</dotTextSize> B | <dotDataSize>0</dotDataSize> B | <dotBSSSize>0</dotBSSSize> B |
 
 
 ## Purpose For Existence
